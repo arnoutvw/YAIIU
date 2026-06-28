@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -156,6 +157,11 @@ func BackgroundUploadHandler(immichServerURL string) http.HandlerFunc {
 		// Forward the Authorization header from the original request
 		if auth := r.Header.Get("Authorization"); auth != "" {
 			req.Header.Set("Authorization", auth)
+		}
+
+		// Add API key from IMMICH_API_KEY environment variable if set
+		if apiKey := os.Getenv("IMMICH_API_KEY"); apiKey != "" {
+			req.Header.Set("x-api-key", apiKey)
 		}
 
 		// Send request to Immich
