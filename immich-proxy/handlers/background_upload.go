@@ -154,14 +154,17 @@ func BackgroundUploadHandler(immichServerURL string) http.HandlerFunc {
 		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("Accept", "application/json")
 
-		// Forward the Authorization header from the original request
-		if auth := r.Header.Get("Authorization"); auth != "" {
-			req.Header.Set("Authorization", auth)
-		}
-
-		// Add API key from IMMICH_API_KEY environment variable if set
-		if apiKey := os.Getenv("IMMICH_API_KEY"); apiKey != "" {
+		// Prefer API key from IMMICH_API_KEY environment variable if set,
+		// otherwise fall back to Authorization header from the request
+		apiKey := os.Getenv("IMMICH_API_KEY")
+		if apiKey != "" {
 			req.Header.Set("x-api-key", apiKey)
+			log.Printf("[%s] Using API key authentication (IMMICH_API_KEY environment variable)", clientIP)
+		} else if auth := r.Header.Get("Authorization"); auth != "" {
+			req.Header.Set("Authorization", auth)
+			log.Printf("[%s] Using Authorization header authentication from request", clientIP)
+		} else {
+			log.Printf("[%s] No authentication method provided (no API key or Authorization header)", clientIP)
 		}
 
 		// Send request to Immich
@@ -310,12 +313,12 @@ func createMultipartRequest(metadata BackgroundUploadRequest, photoData []byte) 
 			},
 		}
 		metadataJSON, err := json.Marshal([]RemoteAssetMetadataItem{metadataItem})
-			if err != nil {
-				return nil, "", fmt.Errorf("failed to marshal metadata: %w", err)
-			}
-			if err := writer.WriteField("metadata", string(metadataJSON)); err != nil {
-				return nil, "", fmt.Errorf("failed to write metadata field: %w", err)
-			}
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		if err := writer.WriteField("metadata", string(metadataJSON)); err != nil {
+			return nil, "", fmt.Errorf("failed to write metadata field: %w", err)
+		}
 	}
 
 	// Add the file with proper Content-Type
