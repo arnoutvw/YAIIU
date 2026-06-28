@@ -77,8 +77,11 @@ func NewReverseProxy(targetURL string) *ReverseProxy {
 // Handler returns the HTTP handler function for the reverse proxy
 func (rp *ReverseProxy) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		clientIP := GetClientIP(r)
-		log.Printf("[%s] Proxying request: %s %s -> %s%s", clientIP, r.Method, r.URL.Path, rp.targetURL.String(), r.URL.Path)
+		// Skip logging for root path to reduce log noise
+		if r.URL.Path != "/" {
+			clientIP := GetClientIP(r)
+			log.Printf("[%s] Proxying request: %s %s -> %s%s", clientIP, r.Method, r.URL.Path, rp.targetURL.String(), r.URL.Path)
+		}
 		rp.proxy.ServeHTTP(w, r)
 	}
 }
